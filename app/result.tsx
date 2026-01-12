@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import { Colors } from '../constants/Colors';
 import { generateReplies } from '../lib/openai';
+import { saveReply } from '../lib/storage';
 
 export default function ResultScreen() {
     const router = useRouter();
@@ -38,6 +39,25 @@ export default function ResultScreen() {
         Alert.alert('Copied', '返信案をコピーしました');
     };
 
+    const handleSave = async (item: any) => {
+        try {
+            await saveReply({
+                situation: {
+                    message: message as string,
+                    relation: relation as string,
+                    opponentType: opponentType as string,
+                },
+                type: item.type,
+                label: item.label,
+                text: item.body,
+                explanation: item.explanation,
+            });
+            Alert.alert("保存しました", "履歴タブから確認できます");
+        } catch (error) {
+            Alert.alert("Error", "保存に失敗しました");
+        }
+    };
+
     if (loading) {
         return (
             <View style={styles.loadingContainer}>
@@ -58,7 +78,10 @@ export default function ResultScreen() {
                             <Text variant="titleMedium" style={{ color: _getLabelColor(item.type), fontWeight: 'bold' }}>
                                 {item.label}
                             </Text>
-                            <IconButton icon="content-copy" iconColor={Colors.secondaryText} size={20} onPress={() => copyToClipboard(item.body)} />
+                            <View style={{ flexDirection: 'row' }}>
+                                <IconButton icon="content-save" iconColor={Colors.secondaryText} size={20} onPress={() => handleSave(item)} />
+                                <IconButton icon="content-copy" iconColor={Colors.secondaryText} size={20} onPress={() => copyToClipboard(item.body)} />
+                            </View>
                         </View>
                         <Text variant="bodyLarge" style={styles.replyText}>
                             {item.body}

@@ -29,6 +29,7 @@ export default function RootLayout() {
             >
                 <Stack.Screen name="index" options={{ title: 'KUZUSHI' }} />
                 <Stack.Screen name="result" options={{ title: '返信案' }} />
+                <Stack.Screen name="history" options={{ title: '履歴' }} />
             </Stack>
         </PaperProvider>
     );

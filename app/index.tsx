@@ -32,9 +32,14 @@ export default function InputScreen() {
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
-            <Text variant="headlineMedium" style={[styles.title, { color: Colors.text }]}>
-                シチュエーション入力
-            </Text>
+            <View style={styles.headerContainer}>
+                <Text variant="headlineMedium" style={[styles.title, { color: Colors.text }]}>
+                    シチュエーション入力
+                </Text>
+                <Button mode="text" icon="history" onPress={() => router.push('/history')} textColor="#4ecca3">
+                    履歴
+                </Button>
+            </View>
 
             <Text variant="titleMedium" style={styles.label}>相手からのメッセージ</Text>
             <TextInput
@@ -98,8 +103,13 @@ const styles = StyleSheet.create({
         padding: 20,
         paddingBottom: 40,
     },
-    title: {
+    headerContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: 20,
+    },
+    title: {
         fontWeight: 'bold',
         textAlign: 'center',
     },
