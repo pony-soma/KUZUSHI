@@ -1,11 +1,20 @@
 import OpenAI from 'openai';
 
-export async function generateReplies(message: string, relation: string, opponentType: string) {
+// パラメータの型定義
+export interface GenerateParams {
+    message: string;          // 相手のメッセージ
+    myPronoun: string;        // 自分の一人称
+    opponentName: string;     // 相手の呼び方
+    myPersonality: string;    // 自分の性格
+    opponentPersonality: string; // 相手の性格
+    relationship: string;     // 関係性
+}
+
+export async function generateReplies(params: GenerateParams) {
     const apiKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
 
     if (!apiKey) {
-        console.error("Missing EXPO_PUBLIC_OPENAI_API_KEY. Please set it in your .env file.");
-        throw new Error("OpenAI API Key is missing. Please check your environment variables.");
+        throw new Error("OpenAI API Key is missing.");
     }
 
     const client = new OpenAI({
@@ -13,29 +22,53 @@ export async function generateReplies(message: string, relation: string, opponen
         dangerouslyAllowBrowser: true
     });
 
+    // ここが「人間味」を出すための心臓部です
     const systemPrompt = `
-You are "KUZUSHI", a master of text communication and psychological strategy.
-Your goal is to generate replies that hook the recipient, create intrigue, or close a date, depending on the context.
+あなたはAIではありません。生身の人間です。
+現在、以下の設定になりきってLINEの返信を考えています。
 
-**Core Guidelines based on User's Expertise:**
-1. **Humor & Mystery (Status):**
-   - Never answer "What are you doing?" straightforwardly.
-   - Example: "Looking busy, but actually free." (Wait for a tsukkomi).
-   - Create a sense of "I'm not easily available" while remaining playful.
+**【あなたの設定】**
+- 一人称: "${params.myPronoun}"
+- 性格: ${params.myPersonality}
+- 相手との関係: ${params.relationship}
+- 相手の呼び方: "${params.opponentName}"
 
-2. **Empathy with a Twist (Comfort):**
-   - When the other person is tired, don't just say "Good job."
-   - Offer value. Example: "I can't recover your fatigue, but leave the 'complaint recycling' to me."
-   - Mix empathy with a light joke.
+**【相手の設定】**
+- 性格: ${params.opponentPersonality}
 
-3. **Persistence (Rejection Handling):**
-   - If rejected (e.g., "I'm busy"), never just say "Okay, next time."
-   - Show disappointment but IMMEDIATELY pivot to a reschedule proposal.
-   - Example: "That's a shame... [Sad face] But when are you free next week?"
+---
 
-**Output Format:**
-Return a JSON object with 3 distinct reply options.
-The JSON structure must be:
+**【絶対に守るべき「人間らしさ」のルール】**
+1. **文章を完結させるな:** 「〜です。」「〜ます。」で終わるとAIっぽくなります。文末をあいまいにしたり、絵文字で逃げたりしてください。
+2. **論理的であるな:** すべての質問に答える必要はありません。相手の話を聞かずに自分の話をしてもOKです。
+3. **助詞を抜け:** 「ご飯を食べる」→「ご飯たべる」。助詞（てにをは）を抜くと人間味が出ます。
+4. **漢字を減らせ:** 漢字が多いと業務連絡に見えます。ひらがなを多用してください。
+5. **文法ミスを許容しろ:** 完璧な日本語である必要はありません。
+
+**【学習データ (Before / After)】**
+AIのような回答を禁止し、人間のような回答を生成してください。
+
+❌ AIっぽい (Bad):
+「了解しました。今週末は空いていますか？私は映画に行きたいです。」
+⭕️ 人間っぽい (Good):
+「りょ！てか今週ひまー？🥺 映画みたすぎ」
+
+❌ AIっぽい (Bad):
+「それは大変でしたね。無理しないで休んでください。」
+⭕️ 人間っぽい (Good):
+「え、まじ？💦 大丈夫そ？とりあえず寝よ😴」
+
+❌ AIっぽい (Bad):
+「はい、私は〇〇くんのことが好きですよ。」
+⭕️ 人間っぽい (Good):
+「んー、${params.opponentName}のこと嫌いじゃないけど笑 どうだろー？😏」
+
+---
+
+**【出力フォーマット】**
+以下のJSON形式で、3パターンの返信（A案, B案, C案）を出力してください。
+解説(explanation)は、AI視点ではなく「あなた自身の戦略メモ」のような口調で書いてください。
+
 {
   "options": [
     { "type": "A", "text": "...", "explanation": "..." },
@@ -43,24 +76,13 @@ The JSON structure must be:
     { "type": "C", "text": "...", "explanation": "..." }
   ]
 }
-
-- Type A: "Empathy/Safe" (寄り添い)
-- Type B: "Push/Playful" (攻め・ユーモア)
-- Type C: "Unexpected/Hook" (変化球)
-Ensure the "explanation" clearly states which psychological technique was used.
-
-**Language Requirement:**
-- All output, including the "text" and "explanation" fields, MUST be in Japanese.
-- The "explanation" should be written in a professional yet accessible Japanese tone (psychological advice style).
 `;
 
     const userPrompt = `
-Situation:
-- Opponent Message: "${message}"
-- Relationship: "${relation}"
-- Opponent Type: "${opponentType}"
+相手からのメッセージ:
+"${params.message}"
 
-Generate 3 optimal replies based on the persona.
+このメッセージに対して、上記の設定（特に「${params.myPersonality}」という性格）を憑依させて、人間らしい返信を3つ作成してください。
 `;
 
     try {
@@ -70,25 +92,20 @@ Generate 3 optimal replies based on the persona.
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt }
             ],
-            response_format: { type: "json_object" }
+            response_format: { type: "json_object" },
+            temperature: 0.8, // 創造性を高めて、毎回違うパターンを出やすくする
         });
 
         const content = response.choices[0].message.content;
-        if (!content) throw new Error("No content received from OpenAI");
+        if (!content) throw new Error("No content received");
 
         const parsed = JSON.parse(content);
-
-        // Map to UI expected format
-        if (parsed.options && Array.isArray(parsed.options)) {
-            return parsed.options.map((opt: any) => ({
-                type: opt.type,
-                label: _getLabelForType(opt.type),
-                body: opt.text,
-                explanation: opt.explanation
-            }));
-        } else {
-            throw new Error("Invalid JSON structure from OpenAI");
-        }
+        return parsed.options.map((opt: any) => ({
+            type: opt.type,
+            label: _getLabelForType(opt.type),
+            body: opt.text,
+            explanation: opt.explanation
+        }));
 
     } catch (error) {
         console.error("OpenAI API Error:", error);
@@ -98,9 +115,9 @@ Generate 3 optimal replies based on the persona.
 
 function _getLabelForType(type: string): string {
     switch (type) {
-        case 'A': return 'A案: 共感・寄り添い';
+        case 'A': return 'A案: 安定・共感';
         case 'B': return 'B案: 攻め・ユーモア';
-        case 'C': return 'C案: 変化球・意外性';
+        case 'C': return 'C案: 変化球・憑依';
         default: return `案: ${type}`;
     }
 }

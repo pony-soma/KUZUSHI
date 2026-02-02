@@ -6,6 +6,9 @@ import * as Clipboard from 'expo-clipboard';
 import { Colors } from '../constants/Colors';
 import { getHistory, deleteReply, SavedReply } from '../lib/storage';
 
+// ターゲットIDを日本語ラベルに変換する辞書
+
+
 export default function HistoryScreen() {
     const [history, setHistory] = useState<SavedReply[]>([]);
     const [loading, setLoading] = useState(true);
@@ -26,15 +29,14 @@ export default function HistoryScreen() {
     const handleDelete = async (id: string) => {
         // Webブラウザの場合
         if (Platform.OS === 'web') {
-            // window.confirm はブラウザ標準の「OK/キャンセル」ダイアログを出します
             if (window.confirm("この履歴を削除しますか？")) {
                 await deleteReply(id);
-                loadHistory(); // 画面を更新
+                loadHistory();
             }
             return;
         }
 
-        // スマホアプリ（iOS/Android）の場合
+        // スマホアプリの場合
         Alert.alert(
             "削除",
             "この履歴を削除しますか？",
@@ -57,31 +59,45 @@ export default function HistoryScreen() {
         Alert.alert('Copied', 'コピーしました');
     };
 
-    const renderItem = ({ item }: { item: SavedReply }) => (
-        <Card style={styles.card}>
-            <Card.Content>
-                <View style={styles.cardHeader}>
-                    <Text variant="titleMedium" style={{ color: _getLabelColor(item.type), fontWeight: 'bold' }}>
-                        {item.label}
-                    </Text>
-                    <Text style={styles.date}>{new Date(item.timestamp).toLocaleDateString()}</Text>
-                </View>
+    const renderItem = ({ item }: { item: SavedReply }) => {
+        // detailsから関係性を抽出
+        let relation = '不明';
+        if (item.situation.details) {
+            const parts = item.situation.details.split(' / ');
+            const relationPart = parts.find(p => p.startsWith('関係:'));
+            if (relationPart) {
+                relation = relationPart.replace('関係:', '');
+            } else {
+                relation = item.situation.details;
+            }
+        }
 
-                <View style={styles.situationContainer}>
-                    <Text style={styles.situationLabel}>To: {item.situation.relation} ({item.situation.opponentType})</Text>
-                    <Text style={styles.situationMsg} numberOfLines={1}>Msg: {item.situation.message}</Text>
-                </View>
+        return (
+            <Card style={styles.card}>
+                <Card.Content>
+                    <View style={styles.cardHeader}>
+                        <Text variant="titleMedium" style={{ color: _getLabelColor(item.type), fontWeight: 'bold' }}>
+                            {item.label}
+                        </Text>
+                        <Text style={styles.date}>{new Date(item.timestamp).toLocaleDateString()}</Text>
+                    </View>
 
-                <Text style={styles.replyText}>{item.text}</Text>
+                    <View style={styles.situationContainer}>
+                        <Text style={styles.situationLabel}>モード: {relation}</Text>
+                        <Text style={styles.situationMsg} numberOfLines={1}>Msg: {item.situation.message}</Text>
+                    </View>
 
-                <View style={styles.actions}>
-                    <IconButton icon="content-copy" iconColor={Colors.secondaryText} size={20} onPress={() => copyToClipboard(item.text)} />
-                    <IconButton icon="delete" iconColor="#E94560" size={20} onPress={() => handleDelete(item.id)} />
-                </View>
+                    <Text style={styles.replyText}>{item.text}</Text>
 
-            </Card.Content>
-        </Card>
-    );
+                    <View style={styles.actions}>
+                        <IconButton icon="content-copy" iconColor={Colors.secondaryText} size={20} onPress={() => copyToClipboard(item.text)} />
+                        <IconButton icon="delete" iconColor="#E94560" size={20} onPress={() => handleDelete(item.id)} />
+                    </View>
+
+                </Card.Content>
+            </Card>
+        );
+    };
 
     if (loading) {
         return (
@@ -110,9 +126,9 @@ export default function HistoryScreen() {
 
 function _getLabelColor(type: string) {
     switch (type) {
-        case 'A': return '#4ecca3'; // Green/Comfort
-        case 'B': return '#E94560'; // Red/PushPull
-        case 'C': return '#fcdab7'; // Orange/Humor
+        case 'A': return '#4ecca3'; // Green
+        case 'B': return '#ff758f'; // Pink (修正)
+        case 'C': return '#fcdab7'; // Orange
         default: return '#fff';
     }
 }
@@ -154,9 +170,10 @@ const styles = StyleSheet.create({
         borderBottomColor: '#0F3460',
     },
     situationLabel: {
-        color: '#A0A0A0',
-        fontSize: 12,
+        color: '#4ecca3', // 少し目立たせる色に変更
+        fontSize: 13,
         fontWeight: 'bold',
+        marginBottom: 4,
     },
     situationMsg: {
         color: '#808080',
@@ -168,6 +185,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         lineHeight: 24,
         marginBottom: 8,
+        marginTop: 4,
     },
     actions: {
         flexDirection: 'row',

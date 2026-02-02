@@ -5,11 +5,11 @@ export interface SavedReply {
     timestamp: number;
     situation: {
         message: string;
-        relation: string;
-        opponentType: string;
+        // 変更: 古い targetType などを廃止し、まとめて details という文字列で保存することにしました
+        details: string;
     };
-    type: string; // 'A' | 'B' | 'C'
-    label: string; // e.g. "共感と安らぎ"
+    type: string;
+    label: string;
     text: string;
     explanation: string;
 }
@@ -36,6 +36,7 @@ export const saveReply = async (reply: Omit<SavedReply, 'id' | 'timestamp'>) => 
 export const getHistory = async (): Promise<SavedReply[]> => {
     try {
         const jsonValue = await AsyncStorage.getItem(HISTORY_KEY);
+        // エラー回避: 古いデータ構造が混ざっていても落ちないようにする
         return jsonValue != null ? JSON.parse(jsonValue) : [];
     } catch (e) {
         console.error('Failed to load history', e);
